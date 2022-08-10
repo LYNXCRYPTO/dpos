@@ -92,7 +92,6 @@ contract Registry is Validation, Delegation {
         delegators[_delegator].delegatedValidators[_validator] = _amount;
 
         addTotalDelegatedStaked(_amount);
-        addTotalBondedStake(_amount);
         numDelegators[block.number + 1]++;
 
         emit DelegatorAdded(_delegator, _validator, _amount);
@@ -101,7 +100,6 @@ contract Registry is Validation, Delegation {
     function removeDelegator(address _delegator, uint256 _amount) private {
         delete delegators[_delegator];
         substractTotalDelegatedStaked(_amount);
-        subtractTotalBondedStake(_amount);
         numDelegators[block.number + 1]--;
         emit DelegatorRemoved(_delegator, _amount);
     }
@@ -117,7 +115,6 @@ contract Registry is Validation, Delegation {
         delegateStake(_delegator, _validator, _amount);
 
         addTotalDelegatedStaked(_amount);
-        addTotalBondedStake(_amount);
 
         emit DelegatorIncreasedStake(_delegator, _validator, _amount);
     }
@@ -144,7 +141,6 @@ contract Registry is Validation, Delegation {
         delegators[_delegator].totalDelegatedStake -= _amount;
 
         substractTotalDelegatedStaked(_amount);
-        subtractTotalBondedStake(_amount);
 
         emit DelegatorDecreasedStake(_delegator, _validator, _amount);
     }
@@ -157,8 +153,10 @@ contract Registry is Validation, Delegation {
 
         if (isValidating) {
             addStake(msg.sender, msg.value);
+            addTotalBondedStake(msg.value);
         } else {
             addValidator(msg.sender, msg.value);
+            addTotalBondedStake(msg.value);
         }
     }
 
@@ -173,11 +171,13 @@ contract Registry is Validation, Delegation {
         );
         require(payable(_to).send(0), "To address is not payable...");
 
-        uint256 stake = validators[msg.sender].stake;
+        uint256 stake = getStakeByAddress(msg.sender);
         if (_amount < stake) {
             subtractStake(msg.sender, _amount);
+            subtractTotalBondedStake(_amount);
         } else {
             removeValidator(msg.sender, stake);
+            subtractTotalBondedStake(stake);
         }
 
         (bool success, ) = _to.call{value: _amount}("");
@@ -200,8 +200,10 @@ contract Registry is Validation, Delegation {
 
         if (isDelegating) {
             addDelegatedStake(msg.sender, _validator, _amount);
+            addTotalBondedStake(_amount);
         } else {
             addDelegator(msg.sender, _validator, _amount);
+            addTotalBondedStake(_amount);
         }
     }
 
@@ -223,7 +225,7 @@ contract Registry is Validation, Delegation {
             "Can't withdraw delegated stake because sender is not currently delegating to the specified validator..."
         );
         require(
-            _amount > getStakeOf(msg.sender),
+            _amount > getStakeByAddress(msg.sender),
             "Sender does not have a sufficient amount of stake delegated currently..."
         );
         require(payable(_to).send(0), "To address is not payable...");
@@ -231,6 +233,7 @@ contract Registry is Validation, Delegation {
         uint256 delegatedStake = delegators[msg.sender].totalDelegatedStake;
         if (_amount < delegatedStake) {
             subtractDelegatedStake(msg.sender, _validator, _amount);
+            subtractTotalBondedStake(_amount);
         } else {
             removeDelegator(msg.sender, delegatedStake);
             subtractTotalBondedStake(delegatedStake);

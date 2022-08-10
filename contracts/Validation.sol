@@ -88,7 +88,11 @@ contract Validation {
         return numValidators[_blockNumber];
     }
 
-    function getStakeOf(address _validator) public view returns (uint256) {
+    function getStakeByAddress(address _validator)
+        public
+        view
+        returns (uint256)
+    {
         require(
             isValidator(_validator),
             "Provided validator isn't validing currently..."
