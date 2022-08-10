@@ -1,9 +1,7 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.15;
 
-import "./Delegation.sol";
-
-contract Validation is Delegation, Slashing {
+contract Validation {
     struct Allegation {
         mapping(address => uint256) witnesses; // Mapping of reporter's address to the timestamp of when they reported it
         uint256 numWitnesses;
@@ -16,6 +14,7 @@ contract Validation is Delegation, Slashing {
         uint256 delegatedStake;
         uint256 totalStake;
         address[] delegators;
+        // TODO: Add mapping of delegator address to index within delegators array
         mapping(uint256 => Allegation) allegations; // Mapping of block number to any allegations
     }
 
@@ -23,7 +22,6 @@ contract Validation is Delegation, Slashing {
     // Accounting variables
     // ***************
     uint256 public totalStaked;
-    uint256 public totalBonded; // The total amount of lynx staked and delegated within the system
     mapping(uint256 => uint256) public numValidators; // Mapping of block number to number of validators at that time
     mapping(address => Validator) public validators;
 
@@ -58,9 +56,6 @@ contract Validation is Delegation, Slashing {
     // Constructor
     // ***************
     constructor() {
-        // TODO: Add valdidation contract address to constructor (Voting.delegationContractAddress)
-        delegation = Delegation(address(0));
-
         slotSize = 10; // 10 blocks per slot
         epochSize = 10; // 10 slots per epoch
 
@@ -81,6 +76,18 @@ contract Validation is Delegation, Slashing {
             validators[_validator].stake > 0;
     }
 
+    function getNumOfValidatorsByBlockNumber(uint256 _blockNumber)
+        external
+        view
+        returns (uint256)
+    {
+        require(
+            _blockNumber <= block.number,
+            "Block has yet to be created yet..."
+        );
+        return numValidators[_blockNumber];
+    }
+
     function getStakeOf(address _validator) public view returns (uint256) {
         require(
             isValidator(_validator),
@@ -96,27 +103,15 @@ contract Validation is Delegation, Slashing {
     // ***************
     // Helper Functions
     // ***************
-    function addTotalBonded(uint256 _amount) public {
-        // TODO: Make sure to require that msg.sender == Voting.delegationContractAddress
-        totalBonded += _amount;
-    }
-
-    function subtractTotalBonded(uint256 _amount) public {
-        // TODO: Make sure to require that msg.sender == Voting.delegationContractAddress
-        totalBonded -= _amount;
-    }
-
     function addTotalStaked(uint256 _amount) private {
         totalStaked += _amount;
-        addTotalBonded(_amount);
     }
 
     function substractTotalStaked(uint256 _amount) private {
         totalStaked -= _amount;
-        subtractTotalBonded(_amount);
     }
 
-    function addValidator(address _validator, uint256 _amount) private {
+    function addValidator(address _validator, uint256 _amount) internal {
         validators[_validator].addr = _validator;
         validators[_validator].stake = _amount;
         validators[_validator].delegatedStake = 0;
@@ -128,75 +123,22 @@ contract Validation is Delegation, Slashing {
         emit ValidatorAdded(_validator, _amount);
     }
 
-    function addStake(address _validator, uint256 _amount) private {
+    function addStake(address _validator, uint256 _amount) internal {
         validators[_validator].stake += _amount;
         addTotalStaked(_amount);
         emit ValidatorIncreasedStake(_validator, _amount);
     }
 
-    function subtractStake(address _validator, uint256 _amount) private {
+    function subtractStake(address _validator, uint256 _amount) internal {
         validators[_validator].stake -= _amount;
         substractTotalStaked(_amount);
         emit ValidatorDecreasedStake(_validator, _amount);
     }
 
-    function removeValidator(address _validator, uint256 _amount) private {
+    function removeValidator(address _validator, uint256 _amount) internal {
         delete validators[_validator];
         substractTotalStaked(_amount);
         numValidators[block.number + 1]--;
         emit ValidatorRemoved(_validator, _amount);
-    }
-
-    function delegateStake(
-        address _delegator,
-        address _validator,
-        uint256 _amount
-    ) public {
-        require(
-            delegation.isDelegator(_delegator),
-            "Provided delegator isn't delgating currently..."
-        );
-        require(
-            isValidator(_delegator),
-            "Provided delegator isn't delgating currently..."
-        );
-        validators[_validator].delegators.push(_delegator);
-        validators[_validator].delegatedStake += _amount;
-        validators[_validator].totalStake += _amount;
-    }
-
-    // ***************
-    // Payable Functions
-    // ***************
-    function depositStake() public payable {
-        bool isValidating = isValidator(msg.sender);
-
-        if (isValidating) {
-            addStake(msg.sender, msg.value);
-        } else {
-            addValidator(msg.sender, msg.value);
-        }
-    }
-
-    function withdrawStake(address _to, uint256 _amount) public payable {
-        require(
-            isValidator(msg.sender),
-            "Sender is not currently a validator..."
-        );
-        require(
-            _amount > validators[msg.sender].stake,
-            "Sender does not have a sufficient amount staked currently..."
-        );
-        require(payable(_to).send(0), "To address is not payable...");
-
-        uint256 stake = validators[msg.sender].stake;
-        if (_amount < stake) {
-            subtractStake(msg.sender, _amount);
-        } else {
-            removeValidator(msg.sender, stake);
-        }
-
-        (bool success, ) = _to.call{value: _amount}("");
-        require(success, "Withdraw failed...");
     }
 }
