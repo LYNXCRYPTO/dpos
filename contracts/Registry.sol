@@ -13,14 +13,14 @@ contract Registry is Validation, Delegation {
     // ***************
     // Getter Functions
     // ***************
-    function getDelegatedStakeOf(address _delegator, address _validator)
+    function getDelegatedStakeToValidatorByAddress(address _delegator, address _validator)
         public
         view
         returns (uint256)
     {
         require(
             isDelegator(_delegator),
-            "Provided delegator is not currently validating..."
+            "Provided delegator is not currently delegating..."
         );
         require(
             isValidator(_validator),
@@ -52,14 +52,14 @@ contract Registry is Validation, Delegation {
         returns (bool)
     {
         require(
-            isDelegator(_delegator),
-            "Provided delegator isn't delegating currently..."
-        );
-        require(
             isValidator(_validator),
-            "Provided delegator isn't delegating currently..."
+            "Provided validator isn't validating currently..."
         );
-        return delegators[_delegator].delegatedValidators[_validator] > 0;
+        if (isDelegator(_delegator)) {
+            return delegators[_delegator].delegatedValidators[_validator] > 0;
+        } else {
+            return false;
+        }
     }
 
     function delegateStake(
@@ -72,8 +72,8 @@ contract Registry is Validation, Delegation {
             "Provided delegator isn't delgating currently..."
         );
         require(
-            isValidator(_delegator),
-            "Provided delegator isn't delgating currently..."
+            isValidator(_validator),
+            "Provided validator isn't validating currently..."
         );
         validators[_validator].delegators.push(_delegator);
         validators[_validator].delegatedStake += _amount;
@@ -85,14 +85,14 @@ contract Registry is Validation, Delegation {
         address _validator,
         uint256 _amount
     ) private {
-        delegateStake(_delegator, _validator, _amount);
-
         delegators[_delegator].addr = _delegator;
         delegators[_delegator].totalDelegatedStake = _amount;
         delegators[_delegator].delegatedValidators[_validator] = _amount;
 
+        delegateStake(_delegator, _validator, _amount);
+
         addTotalDelegatedStaked(_amount);
-        numDelegators[block.number + 1]++;
+        numDelegators[block.number]++;
 
         emit DelegatorAdded(_delegator, _validator, _amount);
     }
@@ -109,6 +109,7 @@ contract Registry is Validation, Delegation {
         address _validator,
         uint256 _amount
     ) private {
+        delegators[_delegator].addr = _delegator;
         delegators[_delegator].delegatedValidators[_validator] += _amount;
         delegators[_delegator].totalDelegatedStake += _amount;
 
@@ -189,7 +190,7 @@ contract Registry is Validation, Delegation {
     // ***************
     // Payable Delegator Functions
     // ***************
-    function depositDelegatedStake(address _validator, uint256 _amount)
+    function depositDelegatedStake(address _validator)
         public
         payable
     {
@@ -202,11 +203,11 @@ contract Registry is Validation, Delegation {
         bool isDelegating = isValidatorDelegated(msg.sender, _validator);
 
         if (isDelegating) {
-            addDelegatedStake(msg.sender, _validator, _amount);
-            addTotalBondedStake(_amount);
+            addDelegatedStake(msg.sender, _validator, msg.value);
+            addTotalBondedStake(msg.value);
         } else {
-            addDelegator(msg.sender, _validator, _amount);
-            addTotalBondedStake(_amount);
+            addDelegator(msg.sender, _validator, msg.value);
+            addTotalBondedStake(msg.value);
         }
     }
 

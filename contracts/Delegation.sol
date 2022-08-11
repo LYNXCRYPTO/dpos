@@ -48,7 +48,7 @@ contract Delegation {
     // ***************
     function isDelegator(address _delegator) public view returns (bool) {
         return
-            delegators[_delegator].addr != address(0);
+            delegators[_delegator].addr != address(0) && delegators[_delegator].totalDelegatedStake > 0;
     }
 
     // ***************

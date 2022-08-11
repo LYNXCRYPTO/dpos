@@ -124,6 +124,52 @@ describe("Registry Contract", function () {
 
             await expect(withdraw).to.be.revertedWith("Can't withdraw zero value...");
         });
+    });
 
+    describe("getDelegatedStakeToValidatorbyAddress()", function () {
+        it("Should return the amount of stake delegated to a validator by a specified delegator", async function () {
+            const { registry, validator, delegator } = await loadFixture(deployRegistry);
+
+            await registry.connect(validator).depositStake({ value: ONE_ETHER });
+            await registry.connect(delegator).depositDelegatedStake(validator.address, { value: ONE_ETHER });
+
+            const delegatedStake = await registry.getDelegatedStakeToValidatorByAddress(delegator.address, validator.address);
+
+            expect(delegatedStake).to.equal(ONE_ETHER);
+        });
+
+        it("Should revert due to the provided delegator not having any stake delegated", async function () {
+            const { registry, validator, delegator } = await loadFixture(deployRegistry);
+
+            await registry.connect(validator).depositStake({ value: ONE_ETHER });
+
+            const delegatedStake = registry.getDelegatedStakeToValidatorByAddress(delegator.address, validator.address);
+
+            await expect(delegatedStake).to.be.revertedWith("Provided delegator is not currently delegating...");
+        });
+
+        it("Should revert due to the provided validator not having any stake", async function () {
+            const { registry, validator, delegator } = await loadFixture(deployRegistry);
+
+            await registry.connect(validator).depositStake({ value: ONE_ETHER });
+            await registry.connect(delegator).depositDelegatedStake(validator.address, { value: ONE_ETHER });
+
+            const delegatedStake = registry.getDelegatedStakeToValidatorByAddress(delegator.address, ZERO_ADDRESS);
+
+            await expect(delegatedStake).to.be.revertedWith("Provided validator is not currently validating...");
+        });
+
+        it("Should revert due to the provided delegator not delegated any stake to the specified validator", async function () {
+            const { registry, owner, validator, delegator } = await loadFixture(deployRegistry);
+
+            await registry.connect(validator).depositStake({ value: ONE_ETHER });
+            await registry.connect(owner).depositStake({ value: ONE_ETHER });
+
+            await registry.connect(delegator).depositDelegatedStake(validator.address, { value: ONE_ETHER });
+
+            const delegatedStake = registry.getDelegatedStakeToValidatorByAddress(delegator.address, owner.address);
+
+            await expect(delegatedStake).to.be.revertedWith("Delegator is not currently delegated to the provided validator...");
+        });
     });
 });
