@@ -122,7 +122,8 @@ contract Validation {
         validators[_validator].totalStake = _amount;
 
         addTotalStaked(_amount);
-        numValidators[block.number + 1]++;
+        // TODO: Figure out how to determine the numValidators
+        //numValidators[block.number]++;
 
         emit ValidatorAdded(_validator, _amount);
     }
@@ -142,7 +143,7 @@ contract Validation {
     function removeValidator(address _validator, uint256 _amount) internal {
         delete validators[_validator];
         substractTotalStaked(_amount);
-        numValidators[block.number + 1]--;
+        //numValidators[block.number]--;
         emit ValidatorRemoved(_validator, _amount);
     }
 }

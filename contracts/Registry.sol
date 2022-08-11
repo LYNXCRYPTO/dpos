@@ -149,6 +149,8 @@ contract Registry is Validation, Delegation {
     // Payable Validator Functions
     // ***************
     function depositStake() public payable {
+        require(msg.value > 0, "Can't deposit zero value...");
+
         bool isValidating = isValidator(msg.sender);
 
         if (isValidating) {
@@ -160,17 +162,17 @@ contract Registry is Validation, Delegation {
         }
     }
 
-    function withdrawStake(address _to, uint256 _amount) public payable {
+    function withdrawStake(address payable _to, uint256 _amount) public {
         require(
             isValidator(msg.sender),
             "Sender is not currently a validator..."
         );
         require(
-            _amount > validators[msg.sender].stake,
+            _amount <= validators[msg.sender].stake,
             "Sender does not have a sufficient amount staked currently..."
         );
-        require(payable(_to).send(0), "To address is not payable...");
-
+        require(_amount > 0, "Can't withdraw zero value...");
+        
         uint256 stake = getStakeByAddress(msg.sender);
         if (_amount < stake) {
             subtractStake(msg.sender, _amount);
@@ -192,9 +194,10 @@ contract Registry is Validation, Delegation {
         payable
     {
         require(
-            isDelegator(_validator),
+            isValidator(_validator),
             "Can't delegate stake because validator doesn't exist..."
         );
+        require(msg.value > 0, "Can't deposit zero value...");
 
         bool isDelegating = isValidatorDelegated(msg.sender, _validator);
 
@@ -208,10 +211,10 @@ contract Registry is Validation, Delegation {
     }
 
     function withdrawDelegatedStake(
-        address _to,
+        address payable _to,
         address _validator,
         uint256 _amount
-    ) public payable {
+    ) public {
         require(
             isDelegator(msg.sender),
             "Sender is not currently a delegator..."
@@ -224,11 +227,12 @@ contract Registry is Validation, Delegation {
             isValidatorDelegated(msg.sender, _validator),
             "Can't withdraw delegated stake because sender is not currently delegating to the specified validator..."
         );
+        require(_amount > 0, "Can't withdraw zero value...");
         require(
-            _amount > getStakeByAddress(msg.sender),
+            _amount <= getStakeByAddress(msg.sender),
             "Sender does not have a sufficient amount of stake delegated currently..."
         );
-        require(payable(_to).send(0), "To address is not payable...");
+        
 
         uint256 delegatedStake = delegators[msg.sender].totalDelegatedStake;
         if (_amount < delegatedStake) {

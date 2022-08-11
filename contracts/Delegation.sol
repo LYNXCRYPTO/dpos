@@ -13,6 +13,7 @@ contract Delegation {
     // Accounting Variables
     // ***************
     uint256 public totalStakeDelegated;
+    // TODO: Add/Subtract numDelegators when delegators are added/removed from set of delegators
     mapping(uint256 => uint256) public numDelegators; // Mapping of block number to number of delegators at that time
     mapping(address => Delegator) public delegators;
 
@@ -47,8 +48,7 @@ contract Delegation {
     // ***************
     function isDelegator(address _delegator) public view returns (bool) {
         return
-            delegators[_delegator].addr != address(0) &&
-            delegators[_delegator].totalDelegatedStake > 0;
+            delegators[_delegator].addr != address(0);
     }
 
     // ***************
