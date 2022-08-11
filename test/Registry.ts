@@ -60,19 +60,19 @@ describe("Registry Contract", function () {
 
             const depositTX = await registry.connect(validator).depositStake({ value: ONE_ETHER });
             const depositReceipt = await depositTX.wait();
-            const depositGasUsed = depositReceipt.gasUsed.mul(depositReceipt.effectiveGasPrice);
+            const depositGasCost = depositReceipt.gasUsed.mul(depositReceipt.effectiveGasPrice);
 
             const withdrawTX = await registry.connect(validator).withdrawStake(validator.address, HALF_ETHER);
             const withdrawReceipt = await withdrawTX.wait();
-            const withdrawGasUsed = withdrawReceipt.gasUsed.mul(withdrawReceipt.effectiveGasPrice);
+            const withdrawGasCost = withdrawReceipt.gasUsed.mul(withdrawReceipt.effectiveGasPrice);
 
-            const totalGasUsed = depositGasUsed.add(withdrawGasUsed);
+            const totalGasCost = depositGasCost.add(withdrawGasCost);
 
             const stake = await (await registry.validators(validator.address)).stake;
             expect(stake).to.equal(HALF_ETHER);
 
             const finalBalance = await validator.getBalance();
-            expect(finalBalance).to.equal(beginningBalance.sub(HALF_ETHER).sub(totalGasUsed));
+            expect(finalBalance).to.equal(beginningBalance.sub(HALF_ETHER).sub(totalGasCost));
         });
 
         it("Should remove validator from validator set", async function () {
@@ -84,16 +84,16 @@ describe("Registry Contract", function () {
 
             const depositTX = await registry.connect(validator).depositStake({ value: ONE_ETHER });
             const depositReceipt = await depositTX.wait();
-            const depositGasUsed = depositReceipt.gasUsed.mul(depositReceipt.effectiveGasPrice);
+            const depositGasCost = depositReceipt.gasUsed.mul(depositReceipt.effectiveGasPrice);
 
             const withdrawTX = await registry.connect(validator).withdrawStake(validator.address, ONE_ETHER);
             const withdrawReceipt = await withdrawTX.wait();
-            const withdrawGasUsed = withdrawReceipt.gasUsed.mul(withdrawReceipt.effectiveGasPrice);
+            const withdrawGasCost = withdrawReceipt.gasUsed.mul(withdrawReceipt.effectiveGasPrice);
 
-            const totalGasUsed = depositGasUsed.add(withdrawGasUsed);
+            const totalGasCost = depositGasCost.add(withdrawGasCost);
 
             const finalBalance = await validator.getBalance();
-            expect(finalBalance).to.equal(beginningBalance.sub(totalGasUsed));
+            expect(finalBalance).to.equal(beginningBalance.sub(totalGasCost));
 
             const address = await (await registry.validators(validator.address)).addr;
             expect(address).to.equal(ZERO_ADDRESS);
