@@ -14,7 +14,7 @@ contract Validation {
         uint256 delegatedStake;
         uint256 totalStake;
         address[] delegators;
-        // TODO: Add mapping of delegator address to index within delegators array
+        mapping(address => uint256) delegatorPositions; // Mapping of delegator address to index within delegators array
         mapping(uint256 => Allegation) allegations; // Mapping of block number to any allegations
     }
 
@@ -95,7 +95,7 @@ contract Validation {
     {
         require(
             isValidator(_validator),
-            "Provided validator isn't validing currently..."
+            "Provided validator isn't validating currently..."
         );
         return validators[_validator].stake;
     }

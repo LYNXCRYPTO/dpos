@@ -75,7 +75,9 @@ contract Registry is Validation, Delegation {
             isValidator(_validator),
             "Provided validator isn't validating currently..."
         );
+
         validators[_validator].delegators.push(_delegator);
+        validators[_validator].delegatorPositions[_delegator] = validators[_validator].delegators.length;
         validators[_validator].delegatedStake += _amount;
         validators[_validator].totalStake += _amount;
     }
@@ -92,15 +94,17 @@ contract Registry is Validation, Delegation {
         delegateStake(_delegator, _validator, _amount);
 
         addTotalDelegatedStaked(_amount);
-        numDelegators[block.number]++;
+        // TODO: Figure out how to determine the numDelegators
+        // numDelegators[block.number]++;
 
         emit DelegatorAdded(_delegator, _validator, _amount);
     }
 
     function removeDelegator(address _delegator, uint256 _amount) private {
         delete delegators[_delegator];
-        substractTotalDelegatedStaked(_amount);
-        numDelegators[block.number + 1]--;
+        // substractTotalDelegatedStaked(_amount);
+        // TODO: Figure out how to determine the numDelegators
+        // numDelegators[block.number]--;
         emit DelegatorRemoved(_delegator, _amount);
     }
 
@@ -109,7 +113,6 @@ contract Registry is Validation, Delegation {
         address _validator,
         uint256 _amount
     ) private {
-        delegators[_delegator].addr = _delegator;
         delegators[_delegator].delegatedValidators[_validator] += _amount;
         delegators[_delegator].totalDelegatedStake += _amount;
 
@@ -125,15 +128,14 @@ contract Registry is Validation, Delegation {
         address _validator,
         uint256 _amount
     ) private {
-        // TODO: Get rid of for loop and replace with constant time look up
         uint256 numOfDelegators = validators[_validator].delegators.length;
-        for (uint64 i; i < numOfDelegators; i++) {
-            if (_delegator == validators[_validator].delegators[i]) {
-                validators[_validator].delegators[i] = validators[_validator]
-                    .delegators[numOfDelegators - 1];
-                validators[_validator].delegators.pop();
-            }
-        }
+        address lastDelegator = validators[_validator].delegators[numOfDelegators - 1];
+        uint256 delegatorPosition = validators[_validator].delegatorPositions[_delegator];
+
+        validators[_validator].delegators[delegatorPosition - 1] = lastDelegator;
+        validators[_validator].delegators.pop();
+        validators[_validator].delegatorPositions[lastDelegator] = delegatorPosition;
+        validators[_validator].delegatorPositions[_delegator] = 0;
 
         validators[_validator].delegatedStake -= _amount;
         validators[_validator].totalStake -= _amount;
@@ -202,7 +204,7 @@ contract Registry is Validation, Delegation {
 
         bool isDelegating = isValidatorDelegated(msg.sender, _validator);
 
-        if (isDelegating) {
+        if (isDelegating || isDelegator(msg.sender)) {
             addDelegatedStake(msg.sender, _validator, msg.value);
             addTotalBondedStake(msg.value);
         } else {
@@ -222,7 +224,7 @@ contract Registry is Validation, Delegation {
         );
         require(
             isValidator(_validator),
-            "Can't withdraw delegated stake becase validator is not currently validating..."
+            "Can't withdraw delegated stake because validator is not currently validating..."
         );
         require(
             isValidatorDelegated(msg.sender, _validator),
@@ -230,16 +232,16 @@ contract Registry is Validation, Delegation {
         );
         require(_amount > 0, "Can't withdraw zero value...");
         require(
-            _amount <= getStakeByAddress(msg.sender),
+            _amount <= getDelegatedStakeToValidatorByAddress(msg.sender, _validator),
             "Sender does not have a sufficient amount of stake delegated currently..."
         );
         
-
         uint256 delegatedStake = delegators[msg.sender].totalDelegatedStake;
         if (_amount < delegatedStake) {
             subtractDelegatedStake(msg.sender, _validator, _amount);
             subtractTotalBondedStake(_amount);
         } else {
+            subtractDelegatedStake(msg.sender, _validator, delegatedStake);
             removeDelegator(msg.sender, delegatedStake);
             subtractTotalBondedStake(delegatedStake);
         }
