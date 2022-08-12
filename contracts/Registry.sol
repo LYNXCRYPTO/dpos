@@ -10,6 +10,7 @@ import "./Delegation.sol";
 /// voting for block proposals.
 contract Registry is Validation, Delegation {
 
+
     // =============================================== Storage ========================================================
 
     /// @dev The total amount of stake residing in the registry. Both the stake deposited by validators and the stake
@@ -31,6 +32,7 @@ contract Registry is Validation, Delegation {
 
         return delegators[_delegator].delegatedValidators[_validator];
     }
+
 
     /// @dev Returns a boolean flag indicating whether the provided delegator is currently delegated to the
     /// specified validator.
@@ -54,6 +56,7 @@ contract Registry is Validation, Delegation {
         totalBonded += _amount;
     }
 
+
     /// @dev Subtracts a specified amount to the total stake desposited by validators and delegators. This function is
     /// only called when depositing/withdraw stake to/from the registry.
     /// @param _amount The amount of stake to add to the total bonded amount.
@@ -62,11 +65,12 @@ contract Registry is Validation, Delegation {
         totalBonded -= _amount;
     }
 
+
     /// @dev Adds a delegator to the registry. Initializes the delegator's stake with the provided amount.
     /// This function is only called by 'depositDelegatedStake'.
     /// @param _delegator The address of the delegator providing the stake.
     /// @param _amount The amount of stake to delegate.
-    function addDelegator(address _delegator, uint256 _amount) private {
+    function addDelegator(address _delegator) private {
         delegators[_delegator].addr = _delegator;
 
         // TODO: Figure out how to determine the numDelegators
@@ -74,6 +78,7 @@ contract Registry is Validation, Delegation {
 
         emit DelegatorAdded(_delegator);
     }
+
 
     /// @dev Removes a delegator from the registry. This function is only called by 'withdrawDelegatedStake' when
     /// when a delegator chooses to withdraw the total amount of stake they have delegated.
@@ -88,6 +93,7 @@ contract Registry is Validation, Delegation {
         emit DelegatorRemoved(_delegator, _amount);
     }
 
+
     /// @dev Adds to the delegated stake of an existing delegator. This function is only called by 'depositDelegatedStake'.
     /// @param _delegator The address of the delegator.
     /// @param _validator The address of the validator to delegate stake to.
@@ -100,6 +106,7 @@ contract Registry is Validation, Delegation {
 
         emit DelegatorIncreasedStake(_delegator, _validator, _amount);
     }
+
 
     /// @dev Subtracts to the delegated stake of an existing delegator. This function is only called by 'withdrawDelegatedStake'.
     /// @param _delegator The address of the delegator.
@@ -114,6 +121,7 @@ contract Registry is Validation, Delegation {
         emit DelegatorDecreasedStake(_delegator, _validator, _amount);
     }
 
+
     /// @dev Deposits a stake into the registry. If stake is valid, the sender will be registered as a validator and will
     /// be able to be queried for other operations such as consensus voting.
     function depositStake() public payable {
@@ -126,6 +134,7 @@ contract Registry is Validation, Delegation {
         addStakeToValidator(msg.sender, msg.value);
         addTotalBonded(msg.value);
     }
+
 
     /// @dev Withdraws stake from the registry and transfers it to the provided payable address. If the sender 
     /// withdraws all of their stake, they will be removed from the validator set.
@@ -147,6 +156,7 @@ contract Registry is Validation, Delegation {
         require(success, "Withdraw failed...");
     }
 
+
     /// @dev Deposits a stake to be delegated to a registered validator. If the validator exists, the sender will
     /// be added to the delegator set.
     /// @param _validator The address of the registered validator to delegate stake to.
@@ -165,6 +175,7 @@ contract Registry is Validation, Delegation {
         addDelegatedStakeToValidator(_validator, msg.value);
         addTotalBonded(msg.value);
     }
+
 
     /// @dev Withdraws stake delegated to a registered validator and transfers it to the provided payable address.
     /// If the sender withdraws their total delegated stake, then they will be removed from the delegator set.
