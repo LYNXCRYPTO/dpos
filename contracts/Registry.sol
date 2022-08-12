@@ -66,62 +66,6 @@ contract Registry is Validation, Delegation {
     }
 
 
-    /// @dev Adds a delegator to the registry. Initializes the delegator's stake with the provided amount.
-    /// This function is only called by 'depositDelegatedStake'.
-    /// @param _delegator The address of the delegator providing the stake.
-    /// @param _amount The amount of stake to delegate.
-    function addDelegator(address _delegator) private {
-        delegators[_delegator].addr = _delegator;
-
-        // TODO: Figure out how to determine the numDelegators
-        // numDelegators[block.number]++;
-
-        emit DelegatorAdded(_delegator);
-    }
-
-
-    /// @dev Removes a delegator from the registry. This function is only called by 'withdrawDelegatedStake' when
-    /// when a delegator chooses to withdraw the total amount of stake they have delegated.
-    /// @param _delegator The address of the delegator.
-    /// @param _amount The amount of delegated stake removed from the registry.
-    function removeDelegator(address _delegator, uint256 _amount) private {
-        delete delegators[_delegator];
-
-        // TODO: Figure out how to determine the numDelegators
-        // numDelegators[block.number]--;
-
-        emit DelegatorRemoved(_delegator, _amount);
-    }
-
-
-    /// @dev Adds to the delegated stake of an existing delegator. This function is only called by 'depositDelegatedStake'.
-    /// @param _delegator The address of the delegator.
-    /// @param _validator The address of the validator to delegate stake to.
-    /// @param _amount The amount of stake to delegate.
-    function addDelegatedStake(address _delegator, address _validator, uint256 _amount) private {
-        delegators[_delegator].delegatedValidators[_validator] += _amount;
-        delegators[_delegator].totalDelegatedStake += _amount;
-
-        addTotalDelegatedStaked(_amount);
-
-        emit DelegatorIncreasedStake(_delegator, _validator, _amount);
-    }
-
-
-    /// @dev Subtracts to the delegated stake of an existing delegator. This function is only called by 'withdrawDelegatedStake'.
-    /// @param _delegator The address of the delegator.
-    /// @param _validator The address of the validator to subtract the delegated stake from.
-    /// @param _amount The amount of delegated stake to remove.
-    function subtractDelegatedStake(address _delegator, address _validator, uint256 _amount) private {
-        delegators[_delegator].delegatedValidators[_validator] -= _amount;
-        delegators[_delegator].totalDelegatedStake -= _amount;
-
-        substractTotalDelegatedStaked(_amount);
-
-        emit DelegatorDecreasedStake(_delegator, _validator, _amount);
-    }
-
-
     /// @dev Deposits a stake into the registry. If stake is valid, the sender will be registered as a validator and will
     /// be able to be queried for other operations such as consensus voting.
     function depositStake() public payable {
@@ -167,11 +111,11 @@ contract Registry is Validation, Delegation {
         bool isDelegating = isValidatorDelegated(msg.sender, _validator);
 
         if (!isDelegating) {
-            addDelegator(msg.sender, msg.value);
+            addDelegator(msg.sender);
             addDelegatorToValidator(_validator, msg.sender);
         } 
 
-        addDelegatedStake(msg.sender, _validator, msg.value);
+        addStakeToDelegator(msg.sender, _validator, msg.value);
         addDelegatedStakeToValidator(_validator, msg.value);
         addTotalBonded(msg.value);
     }
@@ -190,10 +134,10 @@ contract Registry is Validation, Delegation {
         require(_amount <= getDelegatedStakeToValidatorByAddress(msg.sender, _validator), "Sender does not have a sufficient amount of stake delegated currently...");
         
         uint256 delegatedStake = delegators[msg.sender].totalDelegatedStake;
-        subtractDelegatedStake(msg.sender, _validator, _amount);
+        subtractStakeFromDelegator(msg.sender, _validator, _amount);
 
         if (_amount == delegatedStake) {
-            removeDelegator(msg.sender, delegatedStake);
+            removeDelegator(msg.sender);
             removeDelegatorFromValidator(_validator, msg.sender);
         } 
 

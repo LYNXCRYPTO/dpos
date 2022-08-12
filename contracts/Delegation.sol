@@ -21,6 +21,7 @@ contract Delegation {
     // Delegator Events
     // ***************
     event DelegatorAdded(address delegator);
+    event DelegatorRemoved(address delegator);
     event DelegatorIncreasedStake(
         address delegator,
         address validator,
@@ -31,7 +32,6 @@ contract Delegation {
         address validator,
         uint256 stake
     );
-    event DelegatorRemoved(address delegator, uint256 stake);
     event DelegatorPenalized(address delegator, uint256 penalty);
 
     // ***************
@@ -60,6 +60,59 @@ contract Delegation {
 
     function substractTotalDelegatedStaked(uint256 _amount) internal {
         totalStakeDelegated -= _amount;
+    }
+
+    /// @dev Adds a delegator to the registry. Initializes the delegator's stake with the provided amount.
+    /// This function is only called by 'depositDelegatedStake'.
+    /// @param _delegator The address of the delegator providing the stake.
+    function addDelegator(address _delegator) internal {
+        delegators[_delegator].addr = _delegator;
+
+        // TODO: Figure out how to determine the numDelegators
+        // numDelegators[block.number]++;
+
+        emit DelegatorAdded(_delegator);
+    }
+
+
+    /// @dev Removes a delegator from the registry. This function is only called by 'withdrawDelegatedStake' when
+    /// when a delegator chooses to withdraw the total amount of stake they have delegated.
+    /// @param _delegator The address of the delegator.
+    function removeDelegator(address _delegator) internal {
+        delete delegators[_delegator];
+
+        // TODO: Figure out how to determine the numDelegators
+        // numDelegators[block.number]--;
+
+        emit DelegatorRemoved(_delegator);
+    }
+
+
+    /// @dev Adds to the delegated stake of an existing delegator. This function is only called by 'depositDelegatedStake'.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator to delegate stake to.
+    /// @param _amount The amount of stake to delegate.
+    function addStakeToDelegator(address _delegator, address _validator, uint256 _amount) internal {
+        delegators[_delegator].delegatedValidators[_validator] += _amount;
+        delegators[_delegator].totalDelegatedStake += _amount;
+
+        addTotalDelegatedStaked(_amount);
+
+        emit DelegatorIncreasedStake(_delegator, _validator, _amount);
+    }
+
+
+    /// @dev Subtracts to the delegated stake of an existing delegator. This function is only called by 'withdrawDelegatedStake'.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator to subtract the delegated stake from.
+    /// @param _amount The amount of delegated stake to remove.
+    function subtractStakeFromDelegator(address _delegator, address _validator, uint256 _amount) internal {
+        delegators[_delegator].delegatedValidators[_validator] -= _amount;
+        delegators[_delegator].totalDelegatedStake -= _amount;
+
+        substractTotalDelegatedStaked(_amount);
+
+        emit DelegatorDecreasedStake(_delegator, _validator, _amount);
     }
 
     function getTotalDelegatedStakeOf(address _delegator)
