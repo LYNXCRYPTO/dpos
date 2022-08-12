@@ -37,10 +37,10 @@ contract Validation {
     // ***************
     // Validator Events
     // ***************
-    event ValidatorAdded(address validator, uint256 stake);
+    event ValidatorAdded(address validator);
+    event ValidatorRemoved(address validator);
     event ValidatorIncreasedStake(address validator, uint256 stakeIncrease);
     event ValidatorDecreasedStake(address validator, uint256 stakeDecrease);
-    event ValidatorRemoved(address validator, uint256 stake);
     event ValidatorReported(
         address reporter,
         address validator,
@@ -115,35 +115,67 @@ contract Validation {
         totalStaked -= _amount;
     }
 
-    function addValidator(address _validator, uint256 _amount) internal {
-        validators[_validator].addr = _validator;
-        validators[_validator].stake = _amount;
-        validators[_validator].delegatedStake = 0;
-        validators[_validator].totalStake = _amount;
+    function addDelegatorToValidator(address _validator, address _delegator) internal {
+        validators[_validator].delegators.push(_delegator);
+        validators[_validator].delegatorPositions[_delegator] = validators[_validator].delegators.length;
+    }
 
-        addTotalStaked(_amount);
+    function addDelegatedStakeToValidator(
+        address _validator,
+        uint256 _amount
+    ) internal {
+        validators[_validator].delegatedStake += _amount;
+        validators[_validator].totalStake += _amount;
+    }
+
+    function removeDelegatorFromValidator(address _validator, address _delegator) internal {
+        uint256 numOfDelegators = validators[_validator].delegators.length;
+        address lastDelegator = validators[_validator].delegators[numOfDelegators - 1];
+        uint256 delegatorPosition = validators[_validator].delegatorPositions[_delegator];
+
+        validators[_validator].delegators[delegatorPosition - 1] = lastDelegator;
+        validators[_validator].delegators.pop();
+        validators[_validator].delegatorPositions[lastDelegator] = delegatorPosition;
+        validators[_validator].delegatorPositions[_delegator] = 0;
+    }
+
+    function subtractDelegatedStakeFromValidator(address _validator, uint256 _amount) internal {
+        validators[_validator].delegatedStake -= _amount;
+        validators[_validator].totalStake -= _amount;
+    }
+
+    function addValidator(address _validator) internal {
+        validators[_validator].addr = _validator;
+
         // TODO: Figure out how to determine the numValidators
         //numValidators[block.number]++;
 
-        emit ValidatorAdded(_validator, _amount);
+        emit ValidatorAdded(_validator);
     }
 
-    function addStake(address _validator, uint256 _amount) internal {
+    function addStakeToValidator(address _validator, uint256 _amount) internal {
         validators[_validator].stake += _amount;
+        validators[_validator].totalStake += _amount;
+
         addTotalStaked(_amount);
+
         emit ValidatorIncreasedStake(_validator, _amount);
     }
 
-    function subtractStake(address _validator, uint256 _amount) internal {
-        validators[_validator].stake -= _amount;
-        substractTotalStaked(_amount);
-        emit ValidatorDecreasedStake(_validator, _amount);
+    function removeValidator(address _validator) internal {
+        delete validators[_validator];
+
+        // TODO: Figure out how to determine the numValidators
+        //numValidators[block.number]--;
+
+        emit ValidatorRemoved(_validator);
     }
 
-    function removeValidator(address _validator, uint256 _amount) internal {
-        delete validators[_validator];
+    function subtractStakeFromValidator(address _validator, uint256 _amount) internal {
+        validators[_validator].stake -= _amount;
+
         substractTotalStaked(_amount);
-        //numValidators[block.number]--;
-        emit ValidatorRemoved(_validator, _amount);
+
+        emit ValidatorDecreasedStake(_validator, _amount);
     }
 }

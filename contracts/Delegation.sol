@@ -20,7 +20,7 @@ contract Delegation {
     // ***************
     // Delegator Events
     // ***************
-    event DelegatorAdded(address delegator, address validator, uint256 stake);
+    event DelegatorAdded(address delegator);
     event DelegatorIncreasedStake(
         address delegator,
         address validator,

@@ -4,142 +4,108 @@ pragma solidity >=0.8.9;
 import "./Validation.sol";
 import "./Delegation.sol";
 
+/// @dev Lets nodes register to become validator by depositing a stake or delegate a stake
+/// to an existing valiadator. This contract is responsible for facilitating Lynx's consensus
+/// mechanism as nodes can identify others as registered validators for purposes such as
+/// voting for block proposals.
 contract Registry is Validation, Delegation {
-    // ***************
-    // Accounting Variables
-    // ***************
-    uint256 public totalBonded; // The total amount of lynx staked and delegated within the system
 
-    // ***************
-    // Getter Functions
-    // ***************
+    // =============================================== Storage ========================================================
+
+    /// @dev The total amount of stake residing in the registry. Both the stake deposited by validators and the stake
+    /// deposited by delegators are added together to determine this quantity.
+    uint256 public totalBonded;
+
+    // =============================================== Getters ========================================================
+
+    /// @dev Returns the amount of stake delegated by the provided delegator to a specific validator in the 
+    /// validator set.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator.
     function getDelegatedStakeToValidatorByAddress(address _delegator, address _validator)
         public
         view
         returns (uint256)
     {
-        require(
-            isDelegator(_delegator),
-            "Provided delegator is not currently delegating..."
-        );
-        require(
-            isValidator(_validator),
-            "Provided validator is not currently validating..."
-        );
-        require(
-            isValidatorDelegated(_delegator, _validator),
-            "Delegator is not currently delegated to the provided validator..."
-        );
+        require(isValidatorDelegated(_delegator, _validator), "Delegator is not currently delegated to the provided validator...");
+
         return delegators[_delegator].delegatedValidators[_validator];
     }
 
-    // ***************
-    // Helper Functions
-    // ***************
-    function addTotalBondedStake(uint256 _amount) private {
+    /// @dev Returns a boolean flag indicating whether the provided delegator is currently delegated to the
+    /// specified validator.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator.
+    function isValidatorDelegated(address _delegator, address _validator) public view returns (bool) {
+        require(isValidator(_validator), "Provided validator isn't validating currently...");
+
+        if (isDelegator(_delegator)) return delegators[_delegator].delegatedValidators[_validator] > 0;
+        
+        return false;
+    }
+
+    // =============================================== Setters ========================================================
+
+    /// @dev Adds a specified amount to the total stake desposited by validators and delegators. This function is
+    /// only called when depositing/withdraw stake to/from the registry.
+    /// @param _amount The amount of stake to add to the total bonded amount.
+    function addTotalBonded(uint256 _amount) private {
         // TODO: Make sure to require that msg.sender == Voting.delegationContractAddress
         totalBonded += _amount;
     }
 
-    function subtractTotalBondedStake(uint256 _amount) private {
+    /// @dev Subtracts a specified amount to the total stake desposited by validators and delegators. This function is
+    /// only called when depositing/withdraw stake to/from the registry.
+    /// @param _amount The amount of stake to add to the total bonded amount.
+    function subtractTotalBonded(uint256 _amount) private {
         // TODO: Make sure to require that msg.sender == Voting.delegationContractAddress
         totalBonded -= _amount;
     }
 
-    function isValidatorDelegated(address _delegator, address _validator)
-        public
-        view
-        returns (bool)
-    {
-        require(
-            isValidator(_validator),
-            "Provided validator isn't validating currently..."
-        );
-        if (isDelegator(_delegator)) {
-            return delegators[_delegator].delegatedValidators[_validator] > 0;
-        } else {
-            return false;
-        }
-    }
-
-    function delegateStake(
-        address _delegator,
-        address _validator,
-        uint256 _amount
-    ) private {
-        require(
-            isDelegator(_delegator),
-            "Provided delegator isn't delgating currently..."
-        );
-        require(
-            isValidator(_validator),
-            "Provided validator isn't validating currently..."
-        );
-
-        validators[_validator].delegators.push(_delegator);
-        validators[_validator].delegatorPositions[_delegator] = validators[_validator].delegators.length;
-        validators[_validator].delegatedStake += _amount;
-        validators[_validator].totalStake += _amount;
-    }
-
-    function addDelegator(
-        address _delegator,
-        address _validator,
-        uint256 _amount
-    ) private {
+    /// @dev Adds a delegator to the registry. Initializes the delegator's stake with the provided amount.
+    /// This function is only called by 'depositDelegatedStake'.
+    /// @param _delegator The address of the delegator providing the stake.
+    /// @param _amount The amount of stake to delegate.
+    function addDelegator(address _delegator, uint256 _amount) private {
         delegators[_delegator].addr = _delegator;
-        delegators[_delegator].totalDelegatedStake = _amount;
-        delegators[_delegator].delegatedValidators[_validator] = _amount;
 
-        delegateStake(_delegator, _validator, _amount);
-
-        addTotalDelegatedStaked(_amount);
         // TODO: Figure out how to determine the numDelegators
         // numDelegators[block.number]++;
 
-        emit DelegatorAdded(_delegator, _validator, _amount);
+        emit DelegatorAdded(_delegator);
     }
 
+    /// @dev Removes a delegator from the registry. This function is only called by 'withdrawDelegatedStake' when
+    /// when a delegator chooses to withdraw the total amount of stake they have delegated.
+    /// @param _delegator The address of the delegator.
+    /// @param _amount The amount of delegated stake removed from the registry.
     function removeDelegator(address _delegator, uint256 _amount) private {
         delete delegators[_delegator];
-        // substractTotalDelegatedStaked(_amount);
+
         // TODO: Figure out how to determine the numDelegators
         // numDelegators[block.number]--;
+
         emit DelegatorRemoved(_delegator, _amount);
     }
 
-    function addDelegatedStake(
-        address _delegator,
-        address _validator,
-        uint256 _amount
-    ) private {
+    /// @dev Adds to the delegated stake of an existing delegator. This function is only called by 'depositDelegatedStake'.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator to delegate stake to.
+    /// @param _amount The amount of stake to delegate.
+    function addDelegatedStake(address _delegator, address _validator, uint256 _amount) private {
         delegators[_delegator].delegatedValidators[_validator] += _amount;
         delegators[_delegator].totalDelegatedStake += _amount;
-
-        delegateStake(_delegator, _validator, _amount);
 
         addTotalDelegatedStaked(_amount);
 
         emit DelegatorIncreasedStake(_delegator, _validator, _amount);
     }
 
-    function subtractDelegatedStake(
-        address _delegator,
-        address _validator,
-        uint256 _amount
-    ) private {
-        uint256 numOfDelegators = validators[_validator].delegators.length;
-        address lastDelegator = validators[_validator].delegators[numOfDelegators - 1];
-        uint256 delegatorPosition = validators[_validator].delegatorPositions[_delegator];
-
-        validators[_validator].delegators[delegatorPosition - 1] = lastDelegator;
-        validators[_validator].delegators.pop();
-        validators[_validator].delegatorPositions[lastDelegator] = delegatorPosition;
-        validators[_validator].delegatorPositions[_delegator] = 0;
-
-        validators[_validator].delegatedStake -= _amount;
-        validators[_validator].totalStake -= _amount;
-
+    /// @dev Subtracts to the delegated stake of an existing delegator. This function is only called by 'withdrawDelegatedStake'.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator to subtract the delegated stake from.
+    /// @param _amount The amount of delegated stake to remove.
+    function subtractDelegatedStake(address _delegator, address _validator, uint256 _amount) private {
         delegators[_delegator].delegatedValidators[_validator] -= _amount;
         delegators[_delegator].totalDelegatedStake -= _amount;
 
@@ -148,103 +114,80 @@ contract Registry is Validation, Delegation {
         emit DelegatorDecreasedStake(_delegator, _validator, _amount);
     }
 
-    // ***************
-    // Payable Validator Functions
-    // ***************
+    /// @dev Deposits a stake into the registry. If stake is valid, the sender will be registered as a validator and will
+    /// be able to be queried for other operations such as consensus voting.
     function depositStake() public payable {
         require(msg.value > 0, "Can't deposit zero value...");
 
         bool isValidating = isValidator(msg.sender);
 
-        if (isValidating) {
-            addStake(msg.sender, msg.value);
-            addTotalBondedStake(msg.value);
-        } else {
-            addValidator(msg.sender, msg.value);
-            addTotalBondedStake(msg.value);
-        }
+        if (!isValidating) addValidator(msg.sender);
+
+        addStakeToValidator(msg.sender, msg.value);
+        addTotalBonded(msg.value);
     }
 
+    /// @dev Withdraws stake from the registry and transfers it to the provided payable address. If the sender 
+    /// withdraws all of their stake, they will be removed from the validator set.
+    /// @param _to A payable address to withdraw the stake to.
+    /// @param _amount The amount of stake to withdraw.
     function withdrawStake(address payable _to, uint256 _amount) public {
-        require(
-            isValidator(msg.sender),
-            "Sender is not currently a validator..."
-        );
-        require(
-            _amount <= validators[msg.sender].stake,
-            "Sender does not have a sufficient amount staked currently..."
-        );
+        require(isValidator(msg.sender), "Sender is not currently a validator...");
+        require(_amount <= validators[msg.sender].stake, "Sender does not have a sufficient amount staked currently...");
         require(_amount > 0, "Can't withdraw zero value...");
         
         uint256 stake = getStakeByAddress(msg.sender);
-        if (_amount < stake) {
-            subtractStake(msg.sender, _amount);
-            subtractTotalBondedStake(_amount);
-        } else {
-            removeValidator(msg.sender, stake);
-            subtractTotalBondedStake(stake);
-        }
+        subtractStakeFromValidator(msg.sender, _amount);
+
+        if (_amount == stake) removeValidator(msg.sender);
+
+        subtractTotalBonded(_amount);
 
         (bool success, ) = _to.call{value: _amount}("");
         require(success, "Withdraw failed...");
     }
 
-    // ***************
-    // Payable Delegator Functions
-    // ***************
-    function depositDelegatedStake(address _validator)
-        public
-        payable
-    {
-        require(
-            isValidator(_validator),
-            "Can't delegate stake because validator doesn't exist..."
-        );
+    /// @dev Deposits a stake to be delegated to a registered validator. If the validator exists, the sender will
+    /// be added to the delegator set.
+    /// @param _validator The address of the registered validator to delegate stake to.
+    function depositDelegatedStake(address _validator) public payable {
+        require(isValidator(_validator), "Can't delegate stake because validator doesn't exist...");
         require(msg.value > 0, "Can't deposit zero value...");
 
         bool isDelegating = isValidatorDelegated(msg.sender, _validator);
 
-        if (isDelegating || isDelegator(msg.sender)) {
-            addDelegatedStake(msg.sender, _validator, msg.value);
-            addTotalBondedStake(msg.value);
-        } else {
-            addDelegator(msg.sender, _validator, msg.value);
-            addTotalBondedStake(msg.value);
-        }
+        if (!isDelegating) {
+            addDelegator(msg.sender, msg.value);
+            addDelegatorToValidator(_validator, msg.sender);
+        } 
+
+        addDelegatedStake(msg.sender, _validator, msg.value);
+        addDelegatedStakeToValidator(_validator, msg.value);
+        addTotalBonded(msg.value);
     }
 
-    function withdrawDelegatedStake(
-        address payable _to,
-        address _validator,
-        uint256 _amount
-    ) public {
-        require(
-            isDelegator(msg.sender),
-            "Sender is not currently a delegator..."
-        );
-        require(
-            isValidator(_validator),
-            "Can't withdraw delegated stake because validator is not currently validating..."
-        );
-        require(
-            isValidatorDelegated(msg.sender, _validator),
-            "Can't withdraw delegated stake because sender is not currently delegating to the specified validator..."
-        );
+    /// @dev Withdraws stake delegated to a registered validator and transfers it to the provided payable address.
+    /// If the sender withdraws their total delegated stake, then they will be removed from the delegator set.
+    /// @param _to A payable address to withdraw the stake to.
+    /// @param _validator The registered validator to withdraw their delegated stake from.
+    /// @param _amount The amount of stake to withdraw.
+    function withdrawDelegatedStake(address payable _to, address _validator, uint256 _amount) public {
+        require(isDelegator(msg.sender), "Sender is not currently a delegator...");
+        require(isValidator(_validator), "Can't withdraw delegated stake because validator is not currently validating...");
+        require(isValidatorDelegated(msg.sender, _validator), "Can't withdraw delegated stake because sender is not currently delegating to the specified validator...");
         require(_amount > 0, "Can't withdraw zero value...");
-        require(
-            _amount <= getDelegatedStakeToValidatorByAddress(msg.sender, _validator),
-            "Sender does not have a sufficient amount of stake delegated currently..."
-        );
+        require(_amount <= getDelegatedStakeToValidatorByAddress(msg.sender, _validator), "Sender does not have a sufficient amount of stake delegated currently...");
         
         uint256 delegatedStake = delegators[msg.sender].totalDelegatedStake;
-        if (_amount < delegatedStake) {
-            subtractDelegatedStake(msg.sender, _validator, _amount);
-            subtractTotalBondedStake(_amount);
-        } else {
-            subtractDelegatedStake(msg.sender, _validator, delegatedStake);
+        subtractDelegatedStake(msg.sender, _validator, _amount);
+
+        if (_amount == delegatedStake) {
             removeDelegator(msg.sender, delegatedStake);
-            subtractTotalBondedStake(delegatedStake);
-        }
+            removeDelegatorFromValidator(_validator, msg.sender);
+        } 
+
+        subtractDelegatedStakeFromValidator(_validator, _amount);
+        subtractTotalBonded(_amount);
 
         (bool success, ) = _to.call{value: _amount}("");
         require(success, "Withdraw failed...");
