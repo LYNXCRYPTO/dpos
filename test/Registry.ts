@@ -162,7 +162,7 @@ describe("Registry Contract", function () {
                 expect(await registry.totalStakeDelegated()).to.equal(ONE_ETHER);
             });
 
-            it("Should increase existing delegators's stake to a validator which they are already delegated to", async function () {
+            it("Should increase existing delegator's stake to a validator which they are already delegated to", async function () {
                 // TODO: Check to see if validator is within's delegator's list of validators
                 // in which the are delegated to
                 const { registry, validator, delegator } = await loadFixture(deployRegistry);
