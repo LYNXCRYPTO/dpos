@@ -19,6 +19,18 @@ contract Registry is Validation, Delegation {
 
     // =============================================== Getters ========================================================
 
+    /// @dev Returns a boolean flag indicating whether the provided delegator is currently delegated to the
+    /// specified validator.
+    /// @param _delegator The address of the delegator.
+    /// @param _validator The address of the validator.
+    function isValidatorDelegated(address _delegator, address _validator) public view returns (bool) {
+        require(isValidator(_validator), "Provided validator isn't validating currently...");
+
+        if (isDelegator(_delegator)) return delegators[_delegator].delegatedValidators[_validator] > 0;
+        
+        return false;
+    }
+
     /// @dev Returns the amount of stake delegated by the provided delegator to a specific validator in the 
     /// validator set.
     /// @param _delegator The address of the delegator.
@@ -33,23 +45,10 @@ contract Registry is Validation, Delegation {
         return delegators[_delegator].delegatedValidators[_validator];
     }
 
-
-    /// @dev Returns a boolean flag indicating whether the provided delegator is currently delegated to the
-    /// specified validator.
-    /// @param _delegator The address of the delegator.
-    /// @param _validator The address of the validator.
-    function isValidatorDelegated(address _delegator, address _validator) public view returns (bool) {
-        require(isValidator(_validator), "Provided validator isn't validating currently...");
-
-        if (isDelegator(_delegator)) return delegators[_delegator].delegatedValidators[_validator] > 0;
-        
-        return false;
-    }
-
     // =============================================== Setters ========================================================
 
     /// @dev Adds a specified amount to the total stake desposited by validators and delegators. This function is
-    /// only called when depositing/withdraw stake to/from the registry.
+    /// only called when depositing stake to the registry.
     /// @param _amount The amount of stake to add to the total bonded amount.
     function addTotalBonded(uint256 _amount) private {
         // TODO: Make sure to require that msg.sender == Voting.delegationContractAddress
@@ -58,7 +57,7 @@ contract Registry is Validation, Delegation {
 
 
     /// @dev Subtracts a specified amount to the total stake desposited by validators and delegators. This function is
-    /// only called when depositing/withdraw stake to/from the registry.
+    /// only called when withdrawing stake from the registry.
     /// @param _amount The amount of stake to add to the total bonded amount.
     function subtractTotalBonded(uint256 _amount) private {
         // TODO: Make sure to require that msg.sender == Voting.delegationContractAddress
