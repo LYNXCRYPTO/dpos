@@ -20,10 +20,11 @@ contract Validation {
 
     // =============================================== Storage ========================================================
 
-    /// @dev The total amount of stake deposited by registered validators.
+    /// @dev The total amount of stake deposited by registered validators currently.
     uint256 public totalStaked;
 
     /// @dev A mapping of a block's number to the number of registered validators at that time.
+    /// TODO: Figure out how to add/subtract to this number when validators are added/removed from set of validators
     mapping(uint256 => uint256) public numValidators;
 
     /// @dev A mapping of registered validator's address to their stored attributes.
