@@ -10,7 +10,6 @@ import "./Delegation.sol";
 /// voting for block proposals.
 contract Registry is Validation, Delegation {
 
-
     // =============================================== Storage ========================================================
 
     /// @dev The total amount of stake residing in the registry. Both the stake deposited by validators and the stake
@@ -31,19 +30,17 @@ contract Registry is Validation, Delegation {
         return false;
     }
 
+
     /// @dev Returns the amount of stake delegated by the provided delegator to a specific validator in the 
     /// validator set.
     /// @param _delegator The address of the delegator.
     /// @param _validator The address of the validator.
-    function getDelegatedStakeToValidatorByAddress(address _delegator, address _validator)
-        public
-        view
-        returns (uint256)
-    {
+    function getDelegatedStakeToValidatorByAddress(address _delegator, address _validator) public view returns (uint256) {
         require(isValidatorDelegated(_delegator, _validator), "Delegator is not currently delegated to the provided validator...");
 
         return delegators[_delegator].delegatedValidators[_validator];
     }
+
 
     // =============================================== Setters ========================================================
 
