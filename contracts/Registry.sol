@@ -80,7 +80,7 @@ contract Registry is Validation, Delegation {
     /// withdraws all of their stake, they will be removed from the validator set.
     /// @param _to A payable address to withdraw the stake to.
     /// @param _amount The amount of stake to withdraw.
-    function withdrawStake(address payable _to, uint256 _amount) public {
+    function withdrawStake(address payable _to, uint256 _amount) public payable {
         require(isValidator(msg.sender), "Sender is not currently a validator...");
         require(_amount <= validators[msg.sender].stake, "Sender does not have a sufficient amount staked currently...");
         require(_amount > 0, "Can't withdraw zero value...");
@@ -122,7 +122,7 @@ contract Registry is Validation, Delegation {
     /// @param _to A payable address to withdraw the stake to.
     /// @param _validator The registered validator to withdraw their delegated stake from.
     /// @param _amount The amount of stake to withdraw.
-    function withdrawDelegatedStake(address payable _to, address _validator, uint256 _amount) public {
+    function withdrawDelegatedStake(address payable _to, address _validator, uint256 _amount) public payable {
         require(isDelegator(msg.sender), "Sender is not currently a delegator...");
         require(isValidator(_validator), "Can't withdraw delegated stake because validator is not currently validating...");
         require(isValidatorDelegated(msg.sender, _validator), "Can't withdraw delegated stake because sender is not currently delegating to the specified validator...");

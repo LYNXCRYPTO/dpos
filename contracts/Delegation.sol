@@ -2,12 +2,6 @@
 pragma solidity >=0.8.9;
 
 contract Delegation {
-    // Structure representing a delegator and their attributes
-    struct Delegator {
-        address addr;
-        uint256 totalDelegatedStake;
-        mapping(address => uint256) delegatedValidators; // Mapping of validator's address to delegated stake amount
-    }
 
     // =============================================== Storage ========================================================
 
@@ -15,11 +9,19 @@ contract Delegation {
     uint256 public totalStakeDelegated;
 
     /// @dev A mapping of a block's number to the number of registered delegators at that time.
-    // TODO: Add/Subtract numDelegators when delegators are added/removed from set of delegators
-    mapping(uint256 => uint256) public numDelegators;
+    uint256 public numDelegators;
 
     /// @dev A mapping of registered delegator's address to their stored attributes.
     mapping(address => Delegator) public delegators;
+
+    // ============================================== Constants =======================================================
+
+    /// @dev Structure representing a delegator and their attributes.
+    struct Delegator {
+        address addr;
+        uint256 totalDelegatedStake;
+        mapping(address => uint256) delegatedValidators; // Mapping of validator's address to delegated stake amount
+    }
 
     // =============================================== Events ========================================================
 
@@ -68,7 +70,6 @@ contract Delegation {
         return delegators[_delegator].totalDelegatedStake;
     }
 
-
     // =============================================== Setters ========================================================
 
     /// @dev Adds a specified amount to the total stake delegated by all registered delegators currently. This function is
@@ -93,8 +94,7 @@ contract Delegation {
     function addDelegator(address _delegator) internal {
         delegators[_delegator].addr = _delegator;
 
-        // TODO: Figure out how to determine the numDelegators
-        // numDelegators[block.number]++;
+        numDelegators++;
 
         emit DelegatorAdded(_delegator);
     }
@@ -106,8 +106,7 @@ contract Delegation {
     function removeDelegator(address _delegator) internal {
         delete delegators[_delegator];
 
-        // TODO: Figure out how to determine the numDelegators
-        // numDelegators[block.number]--;
+        numDelegators--;
 
         emit DelegatorRemoved(_delegator);
     }

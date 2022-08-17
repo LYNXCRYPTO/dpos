@@ -2,21 +2,6 @@
 pragma solidity >=0.8.9;
 
 contract Validation {
-    struct Allegation {
-        mapping(address => uint256) witnesses; // Mapping of reporter's address to the timestamp of when they reported it
-        uint256 numWitnesses;
-        uint256 totalStakeOfWitnesses;
-    }
-
-    struct Validator {
-        address addr;
-        uint256 stake;
-        uint256 delegatedStake;
-        uint256 totalStake;
-        address[] delegators;
-        mapping(address => uint256) delegatorPositions; // Mapping of delegator address to index within delegators array
-        mapping(uint256 => Allegation) allegations; // Mapping of block number to any allegations
-    }
 
     // =============================================== Storage ========================================================
 
@@ -25,20 +10,22 @@ contract Validation {
 
     /// @dev A mapping of a block's number to the number of registered validators at that time.
     /// TODO: Figure out how to add/subtract to this number when validators are added/removed from set of validators
-    mapping(uint256 => uint256) public numValidators;
+    uint256 public numValidators;
 
     /// @dev A mapping of registered validator's address to their stored attributes.
     mapping(address => Validator) public validators;
 
-    /// @dev These state variables are initialized in the constructor but are dynamic given
-    /// that more than a TBD amount of registered validators vote for a new
-    /// value. These variables are placed here TEMPORARILY and will be moved to a governance
-    /// contract where they can be voted upon.
-    uint256 public penaltyThreshold; // The amount of reports needed to penalize a validator
-    uint256 public penalty; // The percent of a validator's stake to be slashed
-    uint64 public decisionThreshold; // The number of consecutive successes required for a block to be finalized
-    uint64 public slotSize; // The number of blocks included in each slot
-    uint64 public epochSize; // The number of slots included in each epoch
+    // ============================================== Constants =======================================================
+
+    /// @dev Structure representing a validator and their attributes.
+    struct Validator {
+        address addr;
+        uint256 stake;
+        uint256 delegatedStake;
+        uint256 totalStake;
+        address[] delegators;
+        mapping(address => uint256) delegatorPositions; // Mapping of delegator address to index within delegators array
+    }
 
     // =============================================== Events ========================================================
 
@@ -64,26 +51,6 @@ contract Validation {
     /// @param amount The amount of stake that has been removed.
     event ValidatorDecreasedStake(address validator, uint256 amount);
 
-    /// @dev These events are a part of the governance part of this protocol. These will be moved to
-    /// a governance contract when one is created.
-    event ValidatorReported(address reporter,address validator,uint256 blockNumber);
-    event ValidatorPenalized(address validator, uint256 blockNumber, uint256 penalty);
-
-    
-    /// @dev Initializes votable variables when contract is deployed.
-    /// NOTE: These variables will be transferred to a governance contract when one is created.
-    constructor() {
-        slotSize = 10; // 10 blocks per slot
-        epochSize = 10; // 10 slots per epoch
-
-        decisionThreshold = 20; // 20 consecutive successes required for a block to be finalized
-
-        // Because Solidity only allows for integer division, we use a int
-        // that is 0 < x <= 100,000 to represent a decimal with three decimal places.
-        penaltyThreshold = 66666; // 66.666% penalty threshold
-        penalty = 2000; // 2.000% penalty enforced
-    }
-
     // =============================================== Getters ========================================================
 
     /// @dev Returns the total amount of stake deposited by all registered validators currently.
@@ -100,15 +67,6 @@ contract Validation {
     }
 
 
-    /// @dev Returns the number of registered validators at a given block number. The given
-    /// block number must be less than or equal to the current block number.
-    /// @param _blockNumber The number of the block in which to get the number of validators.
-    function getNumOfValidatorsByBlockNumber(uint256 _blockNumber) external view returns (uint256) {
-        require(_blockNumber <= block.number, "Block has yet to be created yet...");
-        return numValidators[_blockNumber];
-    }
-
-
     /// @dev Returns the amount of stake a validator has deposited currently. The validator
     /// must be registered and exist within the current validator set.
     /// @param _validator The address of the validator to get the stake of.
@@ -117,7 +75,6 @@ contract Validation {
         return validators[_validator].stake;
     }
 
-    
     // =============================================== Setters ========================================================
 
     /// @dev Adds a specified amount to the total stake deposited by validators. This function is
@@ -189,8 +146,7 @@ contract Validation {
     function addValidator(address _validator) internal {
         validators[_validator].addr = _validator;
 
-        // TODO: Figure out how to determine the numValidators
-        //numValidators[block.number]++;
+        numValidators++;
 
         emit ValidatorAdded(_validator);
     }
@@ -201,8 +157,7 @@ contract Validation {
     function removeValidator(address _validator) internal {
         delete validators[_validator];
 
-        // TODO: Figure out how to determine the numValidators
-        //numValidators[block.number]--;
+        numValidators--;
 
         emit ValidatorRemoved(_validator);
     }
